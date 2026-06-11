@@ -6,7 +6,6 @@
 #include "ThumbnailGeneratorScript.h"
 #include "ThumbnailScene/ThumbnailPreviewScene.h"
 #include "ThumbnailScene/ThumbnailBackgroundScene.h"
-#include "ThumbnailGeneratorCompatibilityLayer.h"
 #include "CacheProvider.h"
 
 #include "Components/SceneCaptureComponent2D.h"
@@ -26,6 +25,7 @@
 #include "Engine/Texture2D.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/SkeletalMesh.h"
+#include "Engine/World.h"
 #include "EngineUtils.h"
 #include "UObject/StrongObjectPtr.h"
 #include "Slate/WidgetRenderer.h"
@@ -709,9 +709,6 @@ void FThumbnailGenerator::InitializeThumbnailWorld(const FThumbnailBackgroundSce
 	CaptureComponent->PrimitiveRenderMode          = ESceneCapturePrimitiveRenderMode::PRM_RenderScenePrimitives;
 	CaptureComponent->CompositeMode                = ESceneCaptureCompositeMode::SCCM_Overwrite;
 	CaptureComponent->CaptureSource                = GetCaptureSource();
-#if ENGINE_VERSION_LESS_THAN(5, 1)
-	CaptureComponent->bDisableFlipCopyGLES         = true;
-#endif
 	CaptureComponent->bAlwaysPersistRenderingState = true;
 	CaptureComponent->TextureTarget                = nullptr;
 	CaptureComponent->bConsiderUnrenderedOpaquePixelAsFullyTranslucent = true;
@@ -1229,12 +1226,14 @@ UTexture2D* FThumbnailGenerator::CaptureThumbnail(const FThumbnailSettings& Thum
 	CaptureComponent->CaptureScene();
 
 	// Clear any debug lines drawn by our thumbnail actor
-	if (ThumbnailScene->GetThumbnailWorld()->LineBatcher)
-		ThumbnailScene->GetThumbnailWorld()->LineBatcher->Flush();
-	if (ThumbnailScene->GetThumbnailWorld()->PersistentLineBatcher)
-		ThumbnailScene->GetThumbnailWorld()->PersistentLineBatcher->Flush();
-	if (ThumbnailScene->GetThumbnailWorld()->ForegroundLineBatcher)
-		ThumbnailScene->GetThumbnailWorld()->ForegroundLineBatcher->Flush();
+	constexpr const UWorld::ELineBatcherType LineBatchersToFlush[] = 
+	{ 
+		UWorld::ELineBatcherType::World,
+		UWorld::ELineBatcherType::WorldPersistent,
+		UWorld::ELineBatcherType::Foreground,
+		UWorld::ELineBatcherType::ForegroundPersistent
+	};
+	ThumbnailScene->GetThumbnailWorld()->FlushLineBatchers(LineBatchersToFlush);
 
 	CaptureComponent->TextureTarget = nullptr;
 
@@ -1430,16 +1429,7 @@ DEFINE_FUNCTION(UThumbnailGeneration::execK2_ExportPropertyText)
 
 	P_NATIVE_BEGIN;
 	FString PropertyTextValue;
-
-	if (Property != nullptr && PropertyValAddr != nullptr)
-	{
-		Property->ExportTextItem_Direct(PropertyTextValue, PropertyValAddr, nullptr, nullptr, 0, nullptr);
-	}
-	else
-	{
-		UE_LOG(LogBlueprint, Warning, TEXT("K2_ExportPropertyText failed: Property or PropertyValAddr was null. Check your Blueprint pin connections."));
-	}
-
+	Property->ExportTextItem_Direct(PropertyTextValue, PropertyValAddr, nullptr, nullptr, 0, nullptr);
 	*(FString*)RESULT_PARAM = PropertyTextValue;
 	P_NATIVE_END;
 }

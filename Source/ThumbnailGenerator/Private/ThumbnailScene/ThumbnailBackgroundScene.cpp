@@ -4,7 +4,6 @@
 #include "ThumbnailGeneratorModule.h"
 #include "ThumbnailPreviewScene.h"
 #include "ThumbnailGeneratorInterfaces.h"
-#include "ThumbnailGeneratorCompatibilityLayer.h"
 
 #include "Components/SkyLightComponent.h"
 #include "Components/DirectionalLightComponent.h"
@@ -659,5 +658,5 @@ void FThumbnailBackgroundScene::AddReferencedObjects(FReferenceCollector& Collec
 
 FString FThumbnailBackgroundScene::GetReferencerName() const
 {
-	return FString::Printf(TEXT("ThumbnailBackgroundScene_%"), *GetDebugName());
+	return FString::Printf(TEXT("ThumbnailBackgroundScene_%s"), *GetDebugName());
 }
